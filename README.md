@@ -37,7 +37,7 @@
 1. Clone the repository or download the script.
 2. Install required dependencies:
    ```bash
-   pip install esptool pyserial tprint
+   pip install -r requirements.txt
    ```
 
 ## Usage
