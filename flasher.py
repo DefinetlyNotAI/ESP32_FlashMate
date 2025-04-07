@@ -29,6 +29,43 @@ class ESP32UltraFlasher:
         self.config = configparser.ConfigParser()
         self.__load_menu_items()
 
+    def display_menu(self) -> None:
+        try:
+            print()
+
+            if len(self.menu_items) == 0:
+                tprint.warning("No projects found in the 'esp32' folder.")
+                tprint.warning("Please add your projects and try again.")
+                exit()
+
+            tprint.info("Select a project to flash:")
+            for idx, (item, error, _) in enumerate(self.menu_items):
+                if error:
+                    tprint.warning(f"   <{idx + 1}> {item}")
+                else:
+                    tprint.info(f"  <{idx + 1}> {item}")
+
+            selection = tprint.input("Enter a number to select, or 'exit' to quit: > ").strip()
+
+            if selection.lower() == 'exit':
+                tprint.debug("Exiting...")
+                exit()
+
+            try:
+                selection = int(selection) - 1
+                tprint.debug(f"Selection of user (index): {selection}")
+                if 0 <= selection < len(self.menu_items):
+                    self.current_item = self.menu_items[selection]
+                    self.__handle_selection(self.current_item)
+                else:
+                    tprint.warning("Invalid selection, try again.")
+                    self.display_menu()
+            except ValueError:
+                tprint.error("Invalid input, please enter a valid number or 'exit'.")
+                self.display_menu()
+        except Exception as e:
+            tprint.error(f"Error displaying menu: {e}")
+
     def __autogenerate_config(self, folder_path: str) -> None:
         try:
             bin_files = [f for f in os.listdir(folder_path) if f.endswith('.bin')]
@@ -136,41 +173,11 @@ class ESP32UltraFlasher:
         try:
             settings = self.config['Settings']
             for key, value in settings.items():
-                if key.endswith('.bin') and not (value.startswith('0x') and all(c in '0123456789abcdefABCDEF' for c in value[2:])):
+                if key.endswith('.bin') and not (
+                        value.startswith('0x') and all(c in '0123456789abcdefABCDEF' for c in value[2:])):
                     tprint.error(f"Invalid memory address: {value}. Address must be in hex format.")
         except Exception as e:
             tprint.error(f"Error validating memory addresses: {e}")
-
-    def display_menu(self) -> None:
-        try:
-            print()
-            tprint.info("Select a project to flash:")
-            for idx, (item, error, _) in enumerate(self.menu_items):
-                if error:
-                    tprint.warning(f"   <{idx + 1}> {item}")
-                else:
-                    tprint.info(f"  <{idx + 1}> {item}")
-
-            selection = tprint.input("Enter a number to select, or 'exit' to quit: > ").strip()
-
-            if selection.lower() == 'exit':
-                tprint.debug("Exiting...")
-                exit()
-
-            try:
-                selection = int(selection) - 1
-                tprint.debug(f"Selection of user (index): {selection}")
-                if 0 <= selection < len(self.menu_items):
-                    self.current_item = self.menu_items[selection]
-                    self.__handle_selection(self.current_item)
-                else:
-                    tprint.warning("Invalid selection, try again.")
-                    self.display_menu()
-            except ValueError:
-                tprint.error("Invalid input, please enter a valid number or 'exit'.")
-                self.display_menu()
-        except Exception as e:
-            tprint.error(f"Error displaying menu: {e}")
 
     def __handle_selection(self, item: tuple[str, str, list[str]]) -> None:
         folder_name, error, issues = item
@@ -197,14 +204,14 @@ class ESP32UltraFlasher:
             elif choice == '2':
                 self.__autogenerate_config(folder_path)
             elif choice == '3':
-                self._check_project(folder_name, folder_path)
+                self.__check_project(folder_name, folder_path)
             else:
                 tprint.warning("Invalid choice, returning to menu.")
             self.display_menu()
         else:
-            self._flash_esp32(folder_name)
+            self.__flash_esp32(folder_name)
 
-    def _check_project(self, folder_name: str, folder_path: str) -> None:
+    def __check_project(self, folder_name: str, folder_path: str) -> None:
         refreshed_issues = self.__check_folder_for_issues(folder_path)
         for idx, (name, _, _) in enumerate(self.menu_items):
             if name == folder_name:
@@ -212,7 +219,7 @@ class ESP32UltraFlasher:
                 self.menu_items[idx] = (folder_name, error, refreshed_issues if error else None)
                 break
 
-    def _flash_esp32(self, folder_name: str) -> None:
+    def __flash_esp32(self, folder_name: str) -> None:
         """Flash the ESP32 using the config.ini instructions."""
         folder_path = os.path.join(self.esp32_folder, folder_name)
         config_path = os.path.join(folder_path, 'config.ini')
@@ -329,7 +336,8 @@ class ESP32UltraFlasher:
         for bin_file in bin_files:
             address = self.config['Settings'].get(bin_file)
             if address in addresses:
-                mem_conflicts.append(f"Memory address conflict: '{bin_file}' and '{addresses[address]}' are using the same address: {address}")
+                mem_conflicts.append(
+                    f"Memory address conflict: '{bin_file}' and '{addresses[address]}' are using the same address: {address}")
             addresses[address] = bin_file
         return mem_conflicts
 
@@ -337,6 +345,11 @@ class ESP32UltraFlasher:
 if __name__ == "__main__":
     try:
         separator("ESP32 Ultra Flasher")
+        if not os.path.exists("esp32"):
+            os.mkdir("esp32")
+            print()
+            tprint.warning("The 'esp32' folder does not exist. We have recreated it so add your projects.")
+            exit()
         flasher = ESP32UltraFlasher()
         flasher.display_menu()
     except KeyboardInterrupt:
