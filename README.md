@@ -1,5 +1,18 @@
 # ESP32 Ultra Flasher
 
+---
+
+<div style="text-align:center;" align="center">
+    <a href="https://github.com/DefinetlyNotAI/ESP32_FlashMate/issues"><img src="https://img.shields.io/github/issues/DefinetlyNotAI/ESP32_FlashMate" alt="GitHub Issues"></a>
+    <a href="https://github.com/DefinetlyNotAI/ESP32_FlashMate/tags"><img src="https://img.shields.io/github/v/tag/DefinetlyNotAI/ESP32_FlashMate" alt="GitHub Tag"></a>
+    <a href="https://github.com/DefinetlyNotAI/ESP32_FlashMate/graphs/commit-activity"><img src="https://img.shields.io/github/commit-activity/t/DefinetlyNotAI/ESP32_FlashMate" alt="GitHub Commit Activity"></a>
+    <a href="https://github.com/DefinetlyNotAI/ESP32_FlashMate/languages"><img src="https://img.shields.io/github/languages/count/DefinetlyNotAI/ESP32_FlashMate" alt="GitHub Language Count"></a>
+    <a href="https://github.com/DefinetlyNotAI/ESP32_FlashMate/actions"><img src="https://img.shields.io/github/check-runs/DefinetlyNotAI/ESP32_FlashMate/main" alt="GitHub Branch Check Runs"></a>
+    <a href="https://github.com/DefinetlyNotAI/ESP32_FlashMate"><img src="https://img.shields.io/github/repo-size/DefinetlyNotAI/ESP32_FlashMate" alt="GitHub Repo Size"></a>
+</div>
+
+---
+
 **ESP32 Ultra Flasher** is a terminal-based tool to easily flash ESP32 devices. It supports project validation, COM port detection, configuration auto-generation, and flashing of firmware using `esptool`. This project is designed to streamline flashing ESP32 devices, ensuring that configuration files and memory addresses are correctly set up before flashing.
 
 ## Features
