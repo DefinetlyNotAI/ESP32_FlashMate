@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/ESP32UltraFlasher.iml" filepath="$PROJECT_DIR$/.idea/ESP32UltraFlasher.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ESP32_FlashMate.iml" filepath="$PROJECT_DIR$/.idea/ESP32_FlashMate.iml" />
     </modules>
   </component>
 </project>

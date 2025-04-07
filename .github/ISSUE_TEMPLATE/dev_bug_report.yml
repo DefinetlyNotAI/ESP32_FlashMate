@@ -1,0 +1,35 @@
+name: Report a development bug
+description: Tell us about a bug or issue you may have identified while developing ESP32_FlashMate.
+title: "Provide a general summary of the development issue"
+assignees: "DefinetlyNotAI"
+body:
+  - type: checkboxes
+    attributes:
+      label: Prerequisites
+      description: Take a couple minutes to help our maintainers work faster.
+      options:
+        - label: I have [searched](https://github.com/DefinetlyNotAI/ESP32_FlashMate/issues?utf8=%E2%9C%93&q=is%3Aissue) for duplicate or closed issues.
+          required: true
+        - label: I have made sure the issue is not a user error, and have made sure no external modification are responsible for this bug.
+          required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Describe the issue
+      description: Provide a summary of the issue and what you expected to happen, including specific steps to reproduce.
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Include anything you deem important, like the terminal output!
+    validations:
+      required: false
+  - type: textarea
+    id: for_where
+    attributes:
+      label: What part of the project does this affect?
+      description: eg. The core logic or flashing aspect?
+    validations:
+      required: true
