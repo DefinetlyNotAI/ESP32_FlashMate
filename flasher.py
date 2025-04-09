@@ -1,24 +1,11 @@
 import configparser
 import os
+
 import esptool
 import serial
 import serial.tools.list_ports
-from tprint import TPrint, TPrintColors, separator
 
-tprint = TPrint(
-    color_scheme={
-        'info': TPrintColors.WHITE,
-        'warning': TPrintColors.YELLOW,
-        'error': TPrintColors.RED,
-        'debug': TPrintColors.CYAN,
-        'critical': TPrintColors.BRIGHT_RED,
-        'success': TPrintColors.BRIGHT_GREEN,
-        'input': TPrintColors.GREEN
-    },
-    debug_mode=True,
-    use_timestamps=False,
-    purge_old_logs=True
-)
+from utils import tprint, handler, separator
 
 
 class ESP32UltraFlasher:
@@ -51,20 +38,24 @@ class ESP32UltraFlasher:
                 tprint.debug("Exiting...")
                 exit()
 
-            try:
-                selection = int(selection) - 1
-                tprint.debug(f"Selection of user (index): {selection}")
-                if 0 <= selection < len(self.menu_items):
-                    self.current_item = self.menu_items[selection]
-                    self.__handle_selection(self.current_item)
-                else:
-                    tprint.warning("Invalid selection, try again.")
-                    self.display_menu()
-            except ValueError:
-                tprint.error("Invalid input, please enter a valid number or 'exit'.")
-                self.display_menu()
+            while True:
+                try:
+                    selection = int(selection) - 1
+                    tprint.debug(f"Selection of user (index): {selection}")
+                    if 0 <= selection < len(self.menu_items):
+                        self.current_item = self.menu_items[selection]
+                        self.__handle_selection(self.current_item)
+                        break
+                    else:
+                        tprint.warning("Invalid selection, try again.")
+                except ValueError:
+                    tprint.error("Invalid input, please enter a valid number or 'exit'.")
+                selection = tprint.input("Enter a number to select, or 'exit' to quit: > ").strip()
+                if selection.lower() == 'exit':
+                    tprint.debug("Exiting...")
+                    exit()
         except Exception as e:
-            tprint.error(f"Error displaying menu: {e}")
+            handler.exception(msg=e)
 
     def __autogenerate_config(self, folder_path: str) -> None:
         try:
@@ -92,23 +83,29 @@ class ESP32UltraFlasher:
             print()
             tprint.success("'config.ini' generated successfully!")
         except Exception as e:
-            tprint.error(f"Error generating config: {e}")
+            handler.exception(msg=e)
 
     @staticmethod
     def __get_valid_baud_rate() -> str:
-        while True:
-            baud = tprint.input("Enter Baud Rate: > ").strip()
-            if baud.isdigit():
-                return baud
-            tprint.warning("Invalid baud rate. Please enter numbers only.")
+        try:
+            while True:
+                baud = tprint.input("Enter Baud Rate: > ").strip()
+                if baud.isdigit():
+                    return baud
+                tprint.warning("Invalid baud rate. Please enter numbers only.")
+        except Exception as e:
+            handler.exception(msg=e)
 
     @staticmethod
     def __get_valid_address(bin_file: str) -> str:
-        while True:
-            address = tprint.input(f"Enter memory address for '{bin_file}': > ").strip()
-            if address.startswith('0x') and all(c in '0123456789abcdefABCDEF' for c in address[2:]):
-                return address
-            tprint.warning("Invalid address format. Use hex (e.g., 0x10000).")
+        try:
+            while True:
+                address = tprint.input(f"Enter memory address for '{bin_file}': > ").strip()
+                if address.startswith('0x') and all(c in '0123456789abcdefABCDEF' for c in address[2:]):
+                    return address
+                tprint.warning("Invalid address format. Use hex (e.g., 0x10000).")
+        except Exception as e:
+            handler.exception(msg=e)
 
     def __load_menu_items(self) -> None:
         try:
@@ -126,7 +123,7 @@ class ESP32UltraFlasher:
                     else:
                         self.menu_items.append((folder, False, []))
         except Exception as e:
-            tprint.error(f"Error loading menu items: {e}")
+            handler.exception(msg=e)
 
     def __check_folder_for_issues(self, folder_path: str) -> list[str]:
         try:
@@ -157,7 +154,7 @@ class ESP32UltraFlasher:
                 if ref_file not in bin_files:
                     issues.append(f"Bin file '{ref_file}' is referenced in config.ini but not found in the folder")
 
-            self.__validate_memory_addresses()
+            issues += self.__validate_memory_addresses()
 
             baud_rate = self.config.get('Settings', 'Baud_Rate', fallback=None)
             if not baud_rate or not baud_rate.isdigit():
@@ -165,120 +162,136 @@ class ESP32UltraFlasher:
 
             return issues
         except Exception as e:
-            tprint.error(f"Error checking folder for issues: {e}")
+            handler.exception(msg=e)
             return ["Unexpected error during folder check."]
 
-    def __validate_memory_addresses(self) -> None:
+    def __validate_memory_addresses(self) -> list[str]:
         """Ensure all memory addresses are valid hex."""
+        issues = []
         try:
             settings = self.config['Settings']
             for key, value in settings.items():
                 if key.endswith('.bin') and not (
                         value.startswith('0x') and all(c in '0123456789abcdefABCDEF' for c in value[2:])):
-                    tprint.error(f"Invalid memory address: {value}. Address must be in hex format.")
+                    issues.append(f"Invalid memory address: {value}. Address must be in hex format.")
+            return issues
         except Exception as e:
-            tprint.error(f"Error validating memory addresses: {e}")
+            handler.exception(msg=e)
+            return ["Unexpected error during memory address validation."]
 
     def __handle_selection(self, item: tuple[str, str, list[str]]) -> None:
-        folder_name, error, issues = item
-        folder_path = os.path.join(self.esp32_folder, folder_name)
+        try:
+            folder_name, error, issues = item
+            folder_path = os.path.join(self.esp32_folder, folder_name)
 
-        if error:
-            print()
-            tprint.info(f"Project: {folder_name}")
-            tprint.warning("Issues detected:")
-            for issue in issues:
-                print(f"\033[91m  - {issue}\033[0m")
+            if error:
+                print()
+                tprint.info(f"Project: {folder_name}")
+                tprint.warning("Issues detected:")
+                for issue in issues:
+                    print(f"\033[91m  - {issue}\033[0m")
 
-            print()
-            tprint.info("Options:")
-            print("  [1] Open folder to fix manually")
-            print("  [2] Autogenerate config.ini")
-            print("  [3] Recheck this project")
-            print("  [4] Return to menu")
-            choice = tprint.input(" > ").strip()
+                print()
+                tprint.info("Options:")
+                print("  [1] Open folder to fix manually")
+                print("  [2] Autogenerate config.ini")
+                print("  [3] Recheck this project")
+                print("  [4] Return to menu")
+                choice = tprint.input(" > ").strip()
 
-            if choice == '1':
-                os.system(f'explorer {folder_path}')
-                tprint.input("Press enter to recheck the project: > ")
-            elif choice == '2':
-                self.__autogenerate_config(folder_path)
-            elif choice == '3':
-                self.__check_project(folder_name, folder_path)
+                if choice == '1':
+                    os.system(f'explorer {folder_path}')
+                    tprint.input("Press enter to recheck the project: > ")
+                elif choice == '2':
+                    self.__autogenerate_config(folder_path)
+                elif choice == '3':
+                    self.__check_project(folder_name, folder_path)
+                else:
+                    tprint.warning("Invalid choice, returning to menu.")
+                self.display_menu()
             else:
-                tprint.warning("Invalid choice, returning to menu.")
-            self.display_menu()
-        else:
-            self.__flash_esp32(folder_name)
+                self.__flash_esp32(folder_name)
+        except Exception as e:
+            handler.exception(msg=e)
 
     def __check_project(self, folder_name: str, folder_path: str) -> None:
-        refreshed_issues = self.__check_folder_for_issues(folder_path)
-        for idx, (name, _, _) in enumerate(self.menu_items):
-            if name == folder_name:
-                error = True if refreshed_issues else False
-                self.menu_items[idx] = (folder_name, error, refreshed_issues if error else None)
-                break
+        try:
+            refreshed_issues = self.__check_folder_for_issues(folder_path)
+            for idx, (name, _, _) in enumerate(self.menu_items):
+                if name == folder_name:
+                    error = True if refreshed_issues else False
+                    self.menu_items[idx] = (folder_name, error, refreshed_issues if error else None)
+                    break
+        except Exception as e:
+            handler.exception(msg=e)
 
     def __flash_esp32(self, folder_name: str) -> None:
         """Flash the ESP32 using the config.ini instructions."""
-        folder_path = os.path.join(self.esp32_folder, folder_name)
-        config_path = os.path.join(folder_path, 'config.ini')
-        self.config.read(config_path)
+        try:
+            folder_path = os.path.join(self.esp32_folder, folder_name)
+            config_path = os.path.join(folder_path, 'config.ini')
+            self.config.read(config_path)
 
-        baud_rate = self.config.get('Settings', 'Baud_Rate', fallback='115200')
-        bin_files = {
-            key: value for key, value in self.config.items('Settings')
-            if key.endswith('.bin')
-        }
+            baud_rate = self.config.get('Settings', 'Baud_Rate', fallback='115200')
+            bin_files = {
+                key: value for key, value in self.config.items('Settings')
+                if key.endswith('.bin')
+            }
 
-        if not bin_files:
-            tprint.error("No bin files specified in config.ini")
-            return
+            if not bin_files:
+                tprint.error("No bin files specified in config.ini")
+                return
 
-        tprint.debug(f"Using Baud Rate: {baud_rate}")
-        for f, addr in bin_files.items():
-            tprint.debug(f"  {f} -> {addr}")
+            tprint.debug(f"Using Baud Rate: {baud_rate}")
+            for f, addr in bin_files.items():
+                tprint.debug(f"  {f} -> {addr}")
 
-        # Check available COM ports
-        ports = list(serial.tools.list_ports.comports())
-        if not ports:
-            tprint.error("No COM ports found.")
-            self.display_menu()
-            return
+            # Check available COM ports
+            ports = list(serial.tools.list_ports.comports())
+            if not ports:
+                tprint.error("No COM ports found.")
+                self.display_menu()
+                return
 
-        print()
-        tprint.info("Available COM ports:")
-        likely_port = None
-        for idx, port in enumerate(ports):
-            is_likely = 'esp' in port.description.lower() or 'usb' in port.description.lower()
-            marker = ' <-- likely ESP32' if is_likely else ''
-            if is_likely and not likely_port:
-                likely_port = port.device
-            tprint.info(f"<{idx + 1}> {port.device} - {port.description}{marker}")
+            print()
+            tprint.info("Available COM ports:")
+            likely_port = None
+            for idx, port in enumerate(ports):
+                is_likely = 'esp' in port.description.lower() or 'usb' in port.description.lower()
+                marker = ' <-- likely ESP32' if is_likely else ''
+                if is_likely and not likely_port:
+                    likely_port = port.device
+                tprint.info(f"<{idx + 1}> {port.device} - {port.description}{marker}")
 
-        choice = tprint.input("Select a COM port (or press enter to use suggested): > ").strip()
+            choice = tprint.input("Select a COM port (or press enter to use suggested): > ").strip()
 
-        selected_port = self.__get_selected_com_port(choice, likely_port, ports)
-        if not selected_port:
-            tprint.warning("No COM port selected, returning to menu.")
-            self.display_menu()
-            return
+            selected_port = self.__get_selected_com_port(choice, likely_port, ports)
+            if not selected_port:
+                tprint.warning("No COM port selected, returning to menu.")
+                self.display_menu()
+                return
 
-        # Flash the ESP32
-        self.__flash(selected_port, folder_path, bin_files, baud_rate)
+            # Flash the ESP32
+            self.__flash(selected_port, folder_path, bin_files, baud_rate)
+        except Exception as e:
+            handler.exception(msg=e)
 
     @staticmethod
     def __get_selected_com_port(choice: str, likely_port: str, ports: list) -> str:
         """Return the selected COM port, or None if invalid."""
-        if choice == '' and likely_port:
-            return likely_port
-        elif choice == '' and not likely_port:
-            tprint.error("No suggested port found. Please select a port.")
-            return None
         try:
-            return ports[int(choice) - 1].device
-        except (ValueError, IndexError):
-            tprint.error("Invalid selection. Returning to menu.")
+            if choice == '' and likely_port:
+                return likely_port
+            elif choice == '' and not likely_port:
+                tprint.error("No suggested port was found. Please select a port manually.")
+                return None
+            try:
+                return ports[int(choice) - 1].device
+            except (ValueError, IndexError):
+                tprint.error("Invalid selection. Returning to menu.")
+                return None
+        except Exception as e:
+            handler.exception(msg=e)
             return None
 
     @staticmethod
@@ -319,6 +332,7 @@ class ESP32UltraFlasher:
                 full_path = os.path.join(folder_path, fname)
                 flash_args.extend([addr, full_path])
 
+            # Flash the ESP32
             esptool.main(flash_args)
             print()
             tprint.success("Flashing complete.")
@@ -326,20 +340,24 @@ class ESP32UltraFlasher:
 
         except Exception as e:
             print()
-            tprint.critical(f"Flashing failed: {e}")
+            handler.exception(msg=f"Flashing failed: {e}")
             print()
 
     def __check_for_memory_address_conflicts(self, bin_files: list[str]) -> list[str]:
         """Check if any of the bin files in the config have conflicting memory addresses."""
-        addresses = {}
-        mem_conflicts = []
-        for bin_file in bin_files:
-            address = self.config['Settings'].get(bin_file)
-            if address in addresses:
-                mem_conflicts.append(
-                    f"Memory address conflict: '{bin_file}' and '{addresses[address]}' are using the same address: {address}")
-            addresses[address] = bin_file
-        return mem_conflicts
+        try:
+            addresses = {}
+            mem_conflicts = []
+            for bin_file in bin_files:
+                address = self.config['Settings'].get(bin_file)
+                if address in addresses:
+                    mem_conflicts.append(
+                        f"Memory address conflict: '{bin_file}' and '{addresses[address]}' are using the same address: {address}")
+                addresses[address] = bin_file
+            return mem_conflicts
+        except Exception as e:
+            handler.exception(msg=e)
+            return ["Unexpected error during memory address conflict check."]
 
 
 if __name__ == "__main__":
@@ -356,6 +374,9 @@ if __name__ == "__main__":
         print()
         tprint.warning("Program interrupted in a non-graceful way. May produce issues")
         tprint.warning("Please don't exit the program in this way, use 'exit' instead.")
+    except Exception as err:
+        print()
+        handler.exception(msg=err, exit_script=True)
     finally:
         tprint.info("Exiting...")
         print()
