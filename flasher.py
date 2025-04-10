@@ -376,7 +376,7 @@ if __name__ == "__main__":
         tprint.warning("Please don't exit the program in this way, use 'exit' instead.")
     except Exception as err:
         print()
-        handler.exception(msg=err, exit_script=True)
+        handler.exception(msg=err)
     finally:
         tprint.info("Exiting...")
         print()
