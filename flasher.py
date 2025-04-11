@@ -91,23 +91,27 @@ class ESP32UltraFlasher:
         except Exception as e:
             handler.exception(msg=e)
 
-    def __autogenerate_config(self, folder_path: str) -> None:
+    def __autogenerate_config(self, folder_path: str) -> bool:
         try:
             bin_files = [f for f in os.listdir(folder_path) if f.endswith('.bin')]
             if not bin_files:
                 tprint.error("No .bin files found in the folder to generate config.ini.")
-                return
+                return False
 
             print()
             tprint.info(f"Found BIN files: {', '.join(bin_files)}")
 
             baud = self.__get_valid_baud_rate()
+            if baud == 'exit':
+                return False
 
             config = configparser.ConfigParser()
             config['Settings'] = {'Baud_Rate': baud}
 
             for bin_file in bin_files:
                 address = self.__get_valid_address(bin_file)
+                if address == 'exit':
+                    return False
                 config['Settings'][bin_file] = address
 
             config_path = os.path.join(folder_path, 'config.ini')
@@ -116,14 +120,18 @@ class ESP32UltraFlasher:
 
             print()
             tprint.success("'config.ini' generated successfully!")
+            return True
         except Exception as e:
             handler.exception(msg=e)
+            return False
 
     @staticmethod
     def __get_valid_baud_rate() -> str:
         try:
             while True:
                 baud = tprint.input("Enter Baud Rate: > ").strip()
+                if baud.lower() == 'exit':
+                    return 'exit'
                 if baud.isdigit():
                     return baud
                 tprint.warning("Invalid baud rate. Please enter numbers only.")
@@ -135,6 +143,8 @@ class ESP32UltraFlasher:
         try:
             while True:
                 address = tprint.input(f"Enter memory address for '{bin_file}': > ").strip()
+                if address.lower() == 'exit':
+                    return 'exit'
                 if address.startswith('0x') and all(c in '0123456789abcdefABCDEF' for c in address[2:]):
                     return address
                 tprint.warning("Invalid address format. Use hex (e.g., 0x10000).")
@@ -250,12 +260,15 @@ class ESP32UltraFlasher:
                     tprint.input("Press enter to recheck the project: > ")
                     self.__check_project(folder_name, folder_path)
                 elif choice == '2':
-                    self.__autogenerate_config(folder_path)
-                    self.__check_project(folder_name, folder_path)
+                    if self.__autogenerate_config(folder_path):
+                        self.__check_project(folder_name, folder_path)
+                    else:
+                        tprint.error("Failed to autogenerate config.ini.")
                 elif choice == '3':
                     self.__check_project(folder_name, folder_path)
                 else:
-                    tprint.warning("Invalid choice, returning to menu.")
+                    if choice.lower() != 'exit':
+                        tprint.warning("Invalid choice, returning to menu.")
                 self.display_menu()
             else:
                 self.__flash_esp32(folder_name)
@@ -312,6 +325,8 @@ class ESP32UltraFlasher:
                 tprint.info(f"<{idx + 1}> {port.device} - {port.description}{marker}")
 
             choice = tprint.input("Select a COM port (or press enter to use suggested): > ").strip()
+            if choice.lower() == 'exit':
+                return
 
             selected_port = self.__get_selected_com_port(choice, likely_port, ports)
             if not selected_port:
