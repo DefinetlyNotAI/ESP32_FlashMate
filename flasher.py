@@ -73,65 +73,19 @@ class ESP32UltraManager:
             else:
                 tprint.warning("Invalid selection. Try again.")
 
-    @staticmethod
-    def __update_menu() -> None:
+    def __update_menu(self) -> None:
         print()
         separator("ESP32 Ultra Manager - Update")
         print()
-        errors = []
 
         try:
-            # Check git presence
-            if shutil.which("git") is None:
-                tprint.warning("Git is not installed on this system.")
-                errors.append("Missing git.")
-            else:
-                tprint.debug("Git is installed.")
-
-                # Check if current directory is a Git repo
-                try:
-                    subprocess.check_output(["git", "rev-parse", "--is-inside-work-tree"], stderr=subprocess.DEVNULL)
-                    git_available = True
-                except subprocess.CalledProcessError:
-                    tprint.warning("This project is not a Git repository.")
-                    errors.append("Not a git repo.")
-                    git_available = False
-
-                if git_available:
-                    # Check for uncommitted changes
-                    try:
-                        status = subprocess.check_output(["git", "status", "--porcelain"]).decode().strip()
-                        if status:
-                            tprint.warning("Uncommitted changes detected. Please commit or stash your changes before updating.")
-                            errors.append("Uncommitted changes.")
-                    except Exception:
-                        tprint.error("Unable to check for uncommitted changes.")
-                        errors.append("Git status check failed.")
-
-                    # Check if local is ahead of remote
-                    try:
-                        branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode().strip()
-                        local_commit = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
-                        remote_commit = subprocess.check_output(["git", "rev-parse", f"origin/{branch}"]).decode().strip()
-                        if subprocess.check_output(["git", "rev-list", "--left-right", f"{remote_commit}..{local_commit}"]).strip():
-                            tprint.warning("Your local branch is ahead of the remote. Push your changes before updating.")
-                            errors.append("Local branch ahead of remote.")
-                    except Exception:
-                        tprint.error("Unable to check if local branch is ahead of remote.")
-                        errors.append("Git ahead check failed.")
-
-            # Check GitHub connectivity
-            ping_result = os.system(
-                "ping -n 1 github.com > nul" if os.name == "nt" else "ping -c 1 github.com > /dev/null")
-            if ping_result != 0:
-                tprint.warning("Cannot reach github.com. Please check your internet connection.")
-                errors.append("Offline.")
-            else:
-                tprint.debug("github.com is reachable.")
-
-            if errors:
-                tprint.error("Update check failed due to the issues above.")
-                tprint.debug("Errors: " + ", ".join(errors))
+            update_status, update_color = self.check.update_status()
+            if update_status not in ["Up-to-date", "Uncommitted Changes", "Ahead of Main", "Update Available"]:
+                tprint.warning(f"{update_status}. Please resolve the issues before updating.")
+                return
+            if update_status in ["Uncommitted Changes", "Ahead of Main"]:
+                tprint.warning("You have uncommitted changes or are ahead of the main branch.")
+                tprint.warning("Please commit or stash your changes before updating.")
                 return
 
             # Fetch remote and check for updates
@@ -571,9 +525,8 @@ class Check:
             except Exception:
                 return "Unknown Branch", "\033[91m"  # Red
 
-            # Check GitHub connectivity
-            ping_result = os.system(
-                "ping -n 1 github.com > nul" if os.name == "nt" else "ping -c 1 github.com > /dev/null")
+            # Check GitHub connectivity (Windows only)
+            ping_result = subprocess.run(["ping", "-n", "1", "github.com"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
             if ping_result != 0:
                 return "Offline", "\033[91m"  # Red
 
@@ -582,7 +535,11 @@ class Check:
             local_commit = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
             remote_commit = subprocess.check_output(["git", "rev-parse", f"origin/{branch}"]).decode().strip()
 
-            if local_commit == remote_commit:
+            if subprocess.check_output(["git", "status", "--porcelain"]).strip():
+                return "Uncommitted Changes", "\033[93m"  # Yellow
+            elif subprocess.check_output(["git", "rev-list", "--left-right", f"main..{branch}"]).strip():
+                return "Ahead of Main", "\033[93m"  # Yellow
+            elif local_commit == remote_commit:
                 return "Up-to-date", "\033[97m"  # White
             else:
                 return "Update Available", "\033[92m"  # Green
@@ -659,4 +616,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
