@@ -11,6 +11,42 @@ from utils import tprint, handler, separator
 class ESP32UltraFlasher:
     def __init__(self):
         self.esp32_folder = 'esp32'
+        self.esp32_supported_baudrates = [
+            50,
+            75,
+            110,
+            134,
+            150,
+            200,
+            300,
+            600,
+            1200,
+            1800,
+            2400,
+            4800,
+            9600,  # Default baudrate for many USB-UART bridges
+            14400,
+            19200,
+            28800,
+            38400,
+            57600,
+            74880,  # Default bootloader baudrate
+            115200,  # Most common and default flashing speed
+            128000,
+            230400,
+            256000,
+            460800,  # Fast and reliable
+            512000,
+            921600,  # Maximum reliable speed for many USB-UART bridges (CP210x, CH340)
+            1000000,
+            1152000,
+            1500000,
+            2000000,  # Often flaky unless high-end bridge + short cable
+            2500000,
+            3000000,
+            3500000,
+            4000000  # ESP32 supports it, but most bridges can't
+        ]
         self.menu_items = []
         self.current_item = None
         self.config = configparser.ConfigParser()
@@ -26,7 +62,7 @@ class ESP32UltraFlasher:
                 exit()
 
             tprint.info("Select a project to flash:")
-            for idx, (item, error, _) in enumerate(self.menu_items):
+            for idx, (item, error, issues, warn) in enumerate(self.menu_items):
                 if error:
                     tprint.warning(f"   <{idx + 1}> {item}")
                 else:
@@ -35,7 +71,6 @@ class ESP32UltraFlasher:
             selection = tprint.input("Enter a number to select, or 'exit' to quit: > ").strip()
 
             if selection.lower() == 'exit':
-                tprint.debug("Exiting...")
                 exit()
 
             while True:
@@ -52,7 +87,6 @@ class ESP32UltraFlasher:
                     tprint.error("Invalid input, please enter a valid number or 'exit'.")
                 selection = tprint.input("Enter a number to select, or 'exit' to quit: > ").strip()
                 if selection.lower() == 'exit':
-                    tprint.debug("Exiting...")
                     exit()
         except Exception as e:
             handler.exception(msg=e)
@@ -117,27 +151,26 @@ class ESP32UltraFlasher:
             for folder in os.listdir(self.esp32_folder):
                 folder_path = os.path.join(self.esp32_folder, folder)
                 if os.path.isdir(folder_path):
-                    issues = self.__check_folder_for_issues(folder_path)
-                    if issues:
-                        self.menu_items.append((folder, True, issues))
-                    else:
-                        self.menu_items.append((folder, False, []))
+                    issues, warn = self.__check_folder_for_issues(folder_path)
+                    self.menu_items.append((folder, True if issues else False, issues if issues else [], warn if warn else []))
+
         except Exception as e:
             handler.exception(msg=e)
 
-    def __check_folder_for_issues(self, folder_path: str) -> list[str]:
+    def __check_folder_for_issues(self, folder_path: str) -> tuple[list[str], list[str]]:
         try:
             issues = []
+            warn = []
             config_path = os.path.join(folder_path, 'config.ini')
 
             if not os.path.exists(config_path):
                 issues.append("Missing config.ini")
-                return issues
+                return issues, warn
 
             self.config.read(config_path)
             if 'Settings' not in self.config.sections():
                 issues.append("Missing [Settings] section in config.ini")
-                return issues
+                return issues, warn
 
             bin_files = [f for f in os.listdir(folder_path) if f.endswith('.bin')]
             referenced_files = [key for key in self.config['Settings'] if key.endswith('.bin')]
@@ -159,11 +192,20 @@ class ESP32UltraFlasher:
             baud_rate = self.config.get('Settings', 'Baud_Rate', fallback=None)
             if not baud_rate or not baud_rate.isdigit():
                 issues.append(f"Invalid or missing Baud_Rate in config.ini")
+            else:
+                baud_rate = int(baud_rate)
+                if baud_rate not in self.esp32_supported_baudrates:
+                    warn.append(f"Baud Rate: {baud_rate} is unusual, so take heed.")
+                if baud_rate < 0:
+                    issues.append(f"Invalid Baud Rate: {baud_rate}. Must be above 0.")
+                if baud_rate > 2000000:
+                    warn.append(
+                        f"Baud Rate: {baud_rate} is unusually high, so take heed. Anything above 2000000 may not work.")
 
-            return issues
+            return issues, warn
         except Exception as e:
             handler.exception(msg=e)
-            return ["Unexpected error during folder check."]
+            return ["Unexpected error during folder check."], []
 
     def __validate_memory_addresses(self) -> list[str]:
         """Ensure all memory addresses are valid hex."""
@@ -179,14 +221,18 @@ class ESP32UltraFlasher:
             handler.exception(msg=e)
             return ["Unexpected error during memory address validation."]
 
-    def __handle_selection(self, item: tuple[str, str, list[str]]) -> None:
+    def __handle_selection(self, item: tuple[str, str, list[str], list[str]]) -> None:
         try:
-            folder_name, error, issues = item
+            folder_name, error, issues, warn = item
             folder_path = os.path.join(self.esp32_folder, folder_name)
 
+            print()
+            tprint.info(f"Project: {folder_name}")
+            if warn:
+                for w in warn:
+                    tprint.warning(w)
+
             if error:
-                print()
-                tprint.info(f"Project: {folder_name}")
                 tprint.warning("Issues detected:")
                 for issue in issues:
                     print(f"\033[91m  - {issue}\033[0m")
@@ -202,8 +248,10 @@ class ESP32UltraFlasher:
                 if choice == '1':
                     os.system(f'explorer {folder_path}')
                     tprint.input("Press enter to recheck the project: > ")
+                    self.__check_project(folder_name, folder_path)
                 elif choice == '2':
                     self.__autogenerate_config(folder_path)
+                    self.__check_project(folder_name, folder_path)
                 elif choice == '3':
                     self.__check_project(folder_name, folder_path)
                 else:
@@ -216,7 +264,7 @@ class ESP32UltraFlasher:
 
     def __check_project(self, folder_name: str, folder_path: str) -> None:
         try:
-            refreshed_issues = self.__check_folder_for_issues(folder_path)
+            refreshed_issues, _ = self.__check_folder_for_issues(folder_path)
             for idx, (name, _, _) in enumerate(self.menu_items):
                 if name == folder_name:
                     error = True if refreshed_issues else False

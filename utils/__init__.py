@@ -2,6 +2,8 @@ from utils.exception import Handler, Colors
 from utils.tprint import TPrint, TPrintColors, separator
 
 
+DEBUG = True
+
 tprint = TPrint(
     color_scheme={
         'info': TPrintColors.WHITE,
@@ -12,13 +14,14 @@ tprint = TPrint(
         'success': TPrintColors.BRIGHT_GREEN,
         'input': TPrintColors.GREEN
     },
-    debug_mode=True,
+    debug_mode=DEBUG,
     purge_old_logs=True
 )
 
 handler = Handler(
     show_line=True,
-    print_function=tprint.critical
+    print_function=tprint.critical,
+    trace=DEBUG
 )
 
 handler.formatter(
