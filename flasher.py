@@ -11,7 +11,7 @@ import serial.tools.list_ports
 from utils import tprint, handler, separator
 
 
-class ESP32UltraManager:
+class ESP32:
     def __init__(self):
         self.esp32_folder = 'esp32'
         self.menu_items = []
@@ -83,10 +83,12 @@ class ESP32UltraManager:
             if update_status not in ["Up-to-date", "Uncommitted Changes", "Ahead of Main", "Update Available"]:
                 tprint.warning(f"{update_status}. Please resolve the issues before updating.")
                 return
-            if update_status in ["Uncommitted Changes", "Ahead of Main"]:
-                tprint.warning("You have uncommitted changes or are ahead of the main branch.")
-                tprint.warning("Please commit or stash your changes before updating.")
+            if update_status == "Ahead of Main":
+                tprint.warning("You are ahead of the main branch.")
+                tprint.warning("Please commit or stash your changes to allow updating.")
                 return
+            if update_status == "Uncommitted Changes":
+                tprint.warning("You have uncommitted changes!! Will still update though.")
 
             # Fetch remote and check for updates
             subprocess.run(["git", "fetch"], stdout=subprocess.DEVNULL)
@@ -174,7 +176,7 @@ class ESP32UltraManager:
                     tprint.debug(f"Selection of user (index): {selection}")
                     if 0 <= selection < len(self.menu_items):
                         self.current_item = self.menu_items[selection]
-                        self.__handle_selection(self.current_item)
+                        self.__handle_issues(self.current_item)
                         break
                     else:
                         tprint.warning("Invalid selection, try again.")
@@ -186,51 +188,7 @@ class ESP32UltraManager:
         except Exception as e:
             handler.exception(msg=e)
 
-    # Function to handle the flashing and configuration of the selected project #
-
-    def __handle_selection(self, item: tuple[str, str, list[str], list[str]]) -> None:
-        try:
-            folder_name, error, issues, warn = item
-            folder_path = os.path.join(self.esp32_folder, folder_name)
-
-            print()
-            tprint.info(f"Project: {folder_name}")
-            if warn:
-                for w in warn:
-                    tprint.warning(w)
-
-            if error:
-                tprint.warning("Issues detected:")
-                for issue in issues:
-                    print(f"\033[91m  - {issue}\033[0m")
-
-                print()
-                tprint.info("Options:")
-                print("  [1] Open folder to fix manually")
-                print("  [2] Autogenerate config.ini")
-                print("  [3] Recheck this project")
-                print("  [4] Return to menu")
-                choice = tprint.input(" > ").strip()
-
-                if choice == '1':
-                    os.system(f'explorer {folder_path}')
-                    tprint.input("Press enter to recheck the project: > ")
-                    self.check.project(self.menu_items, folder_name, folder_path)
-                elif choice == '2':
-                    if self.__generate_config(folder_path):
-                        self.check.project(self.menu_items, folder_name, folder_path)
-                    else:
-                        tprint.error("Failed to autogenerate config.ini.")
-                elif choice == '3':
-                    self.check.project(self.menu_items, folder_name, folder_path)
-                else:
-                    if choice.lower() != 'exit':
-                        tprint.warning("Invalid choice, returning to menu.")
-                self.__flasher_menu()
-            else:
-                self.__flash_esp32(folder_name)
-        except Exception as e:
-            handler.exception(msg=e)
+    # ----------------------------  Menu methods -----------------------------  #
 
     def __flash_esp32(self, folder_name: str) -> None:
         """Flash the ESP32 using the config.ini instructions."""
@@ -337,27 +295,103 @@ class ESP32UltraManager:
         except Exception as e:
             handler.exception(msg=e)
 
-    def __generate_config(self, folder_path: str) -> bool:
+    def __handle_issues(self, item: tuple[str, str, list[str], list[str]]) -> None:
         try:
+            folder_name, error, issues, warn = item
+            folder_path = os.path.join(self.esp32_folder, folder_name)
+
+            print()
+            tprint.info(f"Project: {folder_name}")
+            if warn:
+                for w in warn:
+                    tprint.warning(w)
+
+            if error:
+                tprint.warning("Issues detected:")
+                for idx, issue in enumerate(issues, start=1):
+                    print(f"\033[91m  [{idx}] {issue}\033[0m")
+
+                self.__suggest_fixes(issues)
+                self.__show_issues(folder_path)
+
+                self.check.project(self.menu_items, folder_name, folder_path)
+                self.__flasher_menu()
+            else:
+                self.__flash_esp32(folder_name)
+        except Exception as e:
+            handler.exception(msg=e)
+
+    def __show_issues(self, folder_path):
+        def delete_subdirectories(path):
+            try:
+                if not os.path.isdir(path):
+                    raise ValueError(f"Provided path '{path}' is not a directory.")
+
+                for entry in os.scandir(path):
+                    if entry.is_dir(follow_symlinks=False):
+                        try:
+                            shutil.rmtree(entry.path)
+                            tprint.debug(f"Deleted directory: {entry.path}")
+                        except Exception as e:
+                            handler.exception(msg=f"Failed {entry.path} -> {e}")
+                tprint.success("Subdirectories removed.")
+            except Exception as e:
+                handler.exception(msg=e)
+
+        tprint.info("Options:")
+        print("  [1] Open folder to fix manually")
+        print("  [2] Autogenerate config.ini (or regenerate)")
+        print("  [3] Remove subdirectories (if any)")
+        choice = tprint.input(" > ").strip()
+
+        if choice == '1':
+            os.system(f'explorer {folder_path}')
+            tprint.input("Press enter to recheck the project: > ")
+        elif choice == '2':
+            self.__generate_config(folder_path)
+        elif choice == '3':
+            delete_subdirectories(folder_path)
+        else:
+            if choice.lower() != 'exit':
+                tprint.warning("Invalid choice, returning to menu.")
+
+    def __generate_config(self, folder_path: str) -> None:
+        try:
+            if not os.path.exists(folder_path):
+                tprint.error(f"'{folder_path}' folder not found.")
+            if not os.path.isdir(folder_path):
+                tprint.error(f"'{folder_path}' is not a directory.")
+
+            config_path = os.path.join(folder_path, 'config.ini')
+            if os.path.exists(config_path):
+                tprint.warning("'config.ini' already exists. Regenerating will overwrite it.")
+                os.remove(config_path)
+
             bin_files = [f for f in os.listdir(folder_path) if f.endswith('.bin')]
             if not bin_files:
                 tprint.error("No .bin files found in the folder to generate config.ini.")
-                return False
 
             print()
             tprint.info(f"Found BIN files: {', '.join(bin_files)}")
 
             baud = self.get.valid_baud_rate()
             if baud == 'exit':
-                return False
+                return
 
             config = configparser.ConfigParser()
             config['Settings'] = {'Baud_Rate': baud}
 
+            used_addresses = set()
             for bin_file in bin_files:
-                address = self.get.valid_address(bin_file)
-                if address == 'exit':
-                    return False
+                while True:
+                    address = self.get.valid_address(bin_file)
+                    if address == 'exit':
+                        return
+                    if address in used_addresses:
+                        tprint.warning(f"Address {address} is already in use. Please enter a unique address.")
+                    else:
+                        used_addresses.add(address)
+                        break
                 config['Settings'][bin_file] = address
 
             config_path = os.path.join(folder_path, 'config.ini')
@@ -366,10 +400,37 @@ class ESP32UltraManager:
 
             print()
             tprint.success("'config.ini' generated successfully!")
-            return True
         except Exception as e:
             handler.exception(msg=e)
-            return False
+
+    @staticmethod
+    def __suggest_fixes(issues: list[str]) -> None:
+        """Provide suggestive fixes for detected issues."""
+        try:
+            print()
+            tprint.info("Suggestive Fixes:")
+            for idx, issue in enumerate(issues, start=1):
+                if "Missing config.ini" in issue:
+                    print("    Suggestion: Use the 'Autogenerate config.ini' option to create a new config.ini file.")
+                elif "Invalid memory address" in issue:
+                    print(
+                        "    Suggestion: Ensure all memory addresses in config.ini are in hex format (e.g., 0x10000).")
+                elif "Bin file" in issue and "not referenced" in issue:
+                    print("    Suggestion: Add the missing bin file to the [Settings] section of config.ini.")
+                elif "Bin file" in issue and "referenced in config.ini but not found" in issue:
+                    print("    Suggestion: Ensure the referenced bin file exists in the project folder.")
+                elif "Subfolders detected" in issue:
+                    print("    Suggestion: Remove subfolders from the project folder to avoid conflicts.")
+                elif "Invalid or missing Baud_Rate" in issue:
+                    print(
+                        "    Suggestion: Add a valid Baud_Rate (e.g. 115200) to the [Settings] section of config.ini.")
+                elif "Memory address conflict" in issue:
+                    print("    Suggestion: Ensure all memory addresses in config.ini are unique.")
+                else:
+                    print("    Suggestion: Review the issue manually and resolve it.")
+            print()
+        except Exception as e:
+            handler.exception(msg=e)
 
 
 class Check:
@@ -415,10 +476,10 @@ class Check:
     def project(self, menu_items, folder_name: str, folder_path: str) -> None:
         try:
             refreshed_issues, _ = self.for_issues(folder_path)
-            for idx, (name, _, _) in enumerate(menu_items):
+            for idx, (name, error, issues, warn) in enumerate(menu_items):
                 if name == folder_name:
                     error = True if refreshed_issues else False
-                    menu_items[idx] = (folder_name, error, refreshed_issues if error else None)
+                    menu_items[idx] = (folder_name, error, refreshed_issues if error else None, warn)
                     break
         except Exception as e:
             handler.exception(msg=e)
@@ -484,6 +545,11 @@ class Check:
                 if ref_file not in bin_files:
                     issues.append(f"Bin file '{ref_file}' is referenced in config.ini but not found in the folder")
 
+            # Check for subfolders inside the project folder
+            subfolders = [f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f))]
+            if subfolders:
+                issues.append(f"Subfolders detected in project folder: {', '.join(subfolders)}")
+
             issues += validate_memory_addresses()
 
             baud_rate = self.config.get('Settings', 'Baud_Rate', fallback=None)
@@ -526,7 +592,8 @@ class Check:
                 return "Unknown Branch", "\033[91m"  # Red
 
             # Check GitHub connectivity (Windows only)
-            ping_result = subprocess.run(["ping", "-n", "1", "github.com"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+            ping_result = subprocess.run(["ping", "-n", "1", "github.com"], stdout=subprocess.DEVNULL,
+                                         stderr=subprocess.DEVNULL).returncode
             if ping_result != 0:
                 return "Offline", "\033[91m"  # Red
 
@@ -600,7 +667,7 @@ def main():
             print()
             tprint.warning("The 'esp32' folder did not exist. It has been created. Add your projects and try again.")
             exit()
-        flasher = ESP32UltraManager()
+        flasher = ESP32()
         flasher.main_menu()
     except KeyboardInterrupt:
         print()
