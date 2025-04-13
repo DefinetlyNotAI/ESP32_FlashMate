@@ -49,8 +49,12 @@ class ESP32:
             # Check update status
             update_status, update_color = self.check.update_status()
 
+            # Check COM port availability
+            ports = list(serial.tools.list_ports.comports())
+            com_status_color = "\033[91m" if not ports else "\033[97m"  # Red if no ports, white otherwise
+
             print("  [1] Flash an ESP32 Project")
-            print("  [2] Communicate (WIP)")
+            print(f"  [2] Communicate {com_status_color}(COM Ports Available: {len(ports)})\033[0m")
             print(f"  [3] Updates {update_color}({update_status})\033[0m")
             print("  [4] Help")
             print("  [5] Exit\n")
@@ -136,14 +140,51 @@ class ESP32:
         except Exception as e:
             handler.exception(msg=e)
 
-    @staticmethod  # WIP
-    def __communication_menu() -> None:
+    def __communication_menu(self) -> None:
         try:
             print()
             separator("ESP32 Ultra Manager - Serial Communication")
             print()
 
-            tprint.warning("Communication feature is currently a WIP.")
+            # Check available COM ports
+            ports = list(serial.tools.list_ports.comports())
+            if not ports:
+                tprint.error("No COM ports found.")
+                return
+
+            tprint.info("Select a project for communication:")
+            tprint.info("   [1] Temporary (Custom Baud Rate)")
+            for idx, (item, _, _, _) in enumerate(self.menu_items):
+                tprint.info(f"   [{idx + 2}] {item}")
+
+            print()
+            choice = tprint.input("Enter a number to select, or 'exit' to quit: > ").strip()
+            if choice.lower() == 'exit':
+                return
+
+            try:
+                choice = int(choice)
+                if choice == 1:
+                    baud_rate = self.get.valid_baud_rate()
+                    if baud_rate == 'exit':
+                        return
+                    self.__start_communication(None, baud_rate)
+                elif 2 <= choice <= len(self.menu_items) + 1:
+                    project = self.menu_items[choice - 2]
+                    folder_name, _, _, _ = project
+                    folder_path = os.path.join(self.esp32_folder, folder_name)
+                    config_path = os.path.join(folder_path, 'config.ini')
+                    self.config.read(config_path)
+
+                    baud_rate = self.config.get('Settings', 'Baud_Rate', fallback=None)
+                    if not baud_rate or not baud_rate.isdigit():
+                        tprint.error("Invalid or missing Baud Rate in config.ini.")
+                        return
+                    self.__start_communication(folder_name, baud_rate)
+                else:
+                    tprint.warning("Invalid selection. Returning to menu.")
+            except ValueError:
+                tprint.error("Invalid input. Please enter a valid number.")
         except Exception as e:
             handler.exception(msg=e)
 
@@ -161,9 +202,9 @@ class ESP32:
             tprint.info("Select a project to flash:")
             for idx, (item, error, issues, warn) in enumerate(self.menu_items):
                 if error:
-                    tprint.warning(f"   <{idx + 1}> {item}")
+                    tprint.warning(f"   [{idx + 1}] {item}")
                 else:
-                    tprint.info(f"  <{idx + 1}> {item}")
+                    tprint.info(f"  [{idx + 1}] {item}")
 
             selection = tprint.input("Enter a number to select, or 'exit' to quit: > ").strip()
 
@@ -270,21 +311,8 @@ class ESP32:
                 self.__flasher_menu()
                 return
 
-            print()
-            tprint.info("Available COM ports:")
-            likely_port = None
-            for idx, port in enumerate(ports):
-                is_likely = 'esp' in port.description.lower() or 'usb' in port.description.lower()
-                marker = ' <-- likely ESP32' if is_likely else ''
-                if is_likely and not likely_port:
-                    likely_port = port.device
-                tprint.info(f"<{idx + 1}> {port.device} - {port.description}{marker}")
+            selected_port = self.__com_port_menu(ports)
 
-            choice = tprint.input("Select a COM port (or press enter to use suggested): > ").strip()
-            if choice.lower() == 'exit':
-                return
-
-            selected_port = self.get.selected_com_port(choice, likely_port, ports)
             if not selected_port:
                 tprint.warning("No COM port selected, returning to menu.")
                 self.__flasher_menu()
@@ -432,46 +460,132 @@ class ESP32:
         except Exception as e:
             handler.exception(msg=e)
 
+    def __com_port_menu(self, ports):
+        print()
+        tprint.info("Available COM ports:")
+        likely_port = None
+        for idx, port in enumerate(ports):
+            is_likely = 'esp' in port.description.lower() or 'usb' in port.description.lower()
+            marker = '\033[92m <-- likely ESP32\033[0m' if is_likely else ''
+            if is_likely and not likely_port:
+                likely_port = port.device
+            tprint.info(f"[{idx + 1}] {port.device} - {port.description}{marker}")
+
+        choice = tprint.input("Select a COM port (or press enter to use suggested): > ").strip()
+        if choice.lower() == 'exit':
+            return
+
+        return self.get.selected_com_port(choice, likely_port, ports)
+
+    def __start_communication(self, project_name: str, baud_rate: str) -> None:
+        try:
+            ports = list(serial.tools.list_ports.comports())
+            if not ports:
+                tprint.error("No COM ports found.")
+                return
+
+            selected_port = self.__com_port_menu(ports)
+
+            if not selected_port:
+                tprint.warning("No COM port selected, returning to menu.")
+                return
+
+            tprint.info(f"Connecting to {selected_port} at {baud_rate} baud...")
+            try:
+                def __test_connection(port_test, baud_test):
+                    try:
+                        with serial.Serial(port_test, int(baud_test), timeout=1) as ser_test:
+                            ser_test.write(b'\x55')  # Send a recognizable byte pattern (e.g., 0x55)
+                            response = ser_test.read(1)  # Read a single byte response
+                            if response == b'\x55':  # Check if the response matches the sent byte
+                                return True
+                    except serial.SerialException as err:
+                        tprint.warning(f"Serial Exception at baud rate {baud_test}: {err}")
+                    except OSError as err:
+                        tprint.warning(f"OSError at baud rate {baud_test}: {err}")
+                    return False
+
+                if not __test_connection(selected_port, baud_rate):
+                    tprint.warning(f"Failed to connect at {baud_rate} baud.")
+                    choice = tprint.input(
+                        "Do you want to auto-fix and find the correct baud rate? (y/n): > ").strip().lower()
+                    if choice == 'y':
+                        for rate in Check.esp32_supported_baudrates:
+                            tprint.info(f"Trying baud rate: {rate}")
+                            if __test_connection(selected_port, rate):
+                                baud_rate = rate
+                                tprint.success(f"Connection successful at {baud_rate} baud.")
+                                break
+                        else:
+                            tprint.error("Unable to find a working baud rate. Returning to menu.")
+                            return
+                    else:
+                        tprint.warning("Auto-fix skipped. Returning to menu.")
+                        return
+
+                with serial.Serial(selected_port, int(baud_rate), timeout=1) as ser:
+                    print()
+                    separator(f"Session {project_name or 'Temporary'} Started")
+                    print("Press Ctrl+C to exit the session.\n")
+                    while True:
+                        try:
+                            if ser.in_waiting > 0:
+                                print(ser.read(ser.in_waiting).decode(errors='ignore'), end='', flush=True)
+                        except KeyboardInterrupt:
+                            break
+                        except Exception as e:
+                            handler.exception(msg=e)
+                            break
+            except Exception as e:
+                handler.exception(msg=e)
+                return
+            finally:
+                print()
+                separator(f"Session {project_name or 'Has'} Ended")
+        except Exception as e:
+            handler.exception(msg=e)
+
 
 class Check:
+    esp32_supported_baudrates = [
+        50,
+        75,
+        110,
+        134,
+        150,
+        200,
+        300,
+        600,
+        1200,
+        1800,
+        2400,
+        4800,
+        9600,  # Default baudrate for many USB-UART bridges
+        14400,
+        19200,
+        28800,
+        38400,
+        57600,
+        74880,  # Default bootloader baudrate
+        115200,  # Most common and default flashing speed
+        128000,
+        230400,
+        256000,
+        460800,  # Fast and reliable
+        512000,
+        921600,  # Maximum reliable speed for many USB-UART bridges (CP210x, CH340)
+        1000000,
+        1152000,
+        1500000,
+        2000000,  # Often flaky unless high-end bridge + short cable
+        2500000,
+        3000000,
+        3500000,
+        4000000  # ESP32 supports it, but most bridges can't
+    ]
+
     def __init__(self, config):
         self.config = config
-        self.esp32_supported_baudrates = [
-            50,
-            75,
-            110,
-            134,
-            150,
-            200,
-            300,
-            600,
-            1200,
-            1800,
-            2400,
-            4800,
-            9600,  # Default baudrate for many USB-UART bridges
-            14400,
-            19200,
-            28800,
-            38400,
-            57600,
-            74880,  # Default bootloader baudrate
-            115200,  # Most common and default flashing speed
-            128000,
-            230400,
-            256000,
-            460800,  # Fast and reliable
-            512000,
-            921600,  # Maximum reliable speed for many USB-UART bridges (CP210x, CH340)
-            1000000,
-            1152000,
-            1500000,
-            2000000,  # Often flaky unless high-end bridge + short cable
-            2500000,
-            3000000,
-            3500000,
-            4000000  # ESP32 supports it, but most bridges can't
-        ]
 
     def project(self, menu_items, folder_name: str, folder_path: str) -> None:
         try:

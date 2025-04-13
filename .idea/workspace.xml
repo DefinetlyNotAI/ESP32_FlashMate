@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="89459b82-f2ae-40c6-8085-48835b1c9d90" name="Changes" comment="Refactor update menu functionality in ESP32 manager; streamline Git checks and enhance user feedback for update status">
+    <list default="true" id="89459b82-f2ae-40c6-8085-48835b1c9d90" name="Changes" comment="Refactor ESP32 manager; improve issue handling and user feedback for flashing process">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/flasher.py" beforeDir="false" afterPath="$PROJECT_DIR$/flasher.py" afterDir="false" />
     </list>
@@ -56,6 +56,11 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Hp\Desktop\Repositories\ESP32_FlashMate\esp32\hack-tool" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -76,6 +81,10 @@
       <workItem from="1744380755960" duration="3728000" />
       <workItem from="1744384724055" duration="1114000" />
       <workItem from="1744468243710" duration="4166000" />
+      <workItem from="1744475381718" duration="2272000" />
+      <workItem from="1744545503422" duration="3238000" />
+      <workItem from="1744567327073" duration="436000" />
+      <workItem from="1744567789524" duration="295000" />
     </task>
     <task id="LOCAL-00001" summary="Update .gitignore and project configuration; exclude .venv and esp32 directories">
       <option name="closed" value="true" />
@@ -136,6 +145,6 @@
     <option name="LAST_COMMIT_MESSAGE" value="Merge remote-tracking branch 'origin/nightly' into nightly&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;flasher.py" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/ESP32_FlashMate$flasher.coverage" NAME="flasher Coverage Results" MODIFIED="1744473050957" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ESP32_FlashMate$flasher.coverage" NAME="flasher Coverage Results" MODIFIED="1744559642195" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
