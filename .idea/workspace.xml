@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="89459b82-f2ae-40c6-8085-48835b1c9d90" name="Changes" comment="Enhance ESP32 manager; add COM port availability check and improve communication menu functionality">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PLANS.md" beforeDir="false" afterPath="$PROJECT_DIR$/PLANS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/flasher.py" beforeDir="false" afterPath="$PROJECT_DIR$/flasher.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;DefinetlyNotAI&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/DefinetlyNotAI/ESP32_FlashMate&quot;,
+    &quot;accountId&quot;: &quot;31413777-2edc-4e62-90ea-c6a5b1221490&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 7
+}</component>
+  <component name="ProjectId" id="2vaK4jPHObz4ooC7AnpmYKf1U9u" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+    <option name="sortByType" value="true" />
+    <option name="sortKey" value="BY_TYPE" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.flasher.executor&quot;: &quot;Run&quot;,
+    &quot;Python.tes.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;com.codeium.enabled&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;nightly&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;project.propVCSSupport.DirectoryMappings&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Hp\Desktop\Repositories\ESP32_FlashMate\esp32\hack-tool" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-PY-243.26053.29" />
+        <option value="bundled-python-sdk-b1dbf8ef85a6-4df51de95216-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-243.26053.29" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="89459b82-f2ae-40c6-8085-48835b1c9d90" name="Changes" comment="" />
+      <created>1744377556886</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1744377556886</updated>
+      <workItem from="1744377558438" duration="3038000" />
+      <workItem from="1744380755960" duration="3728000" />
+      <workItem from="1744384724055" duration="1114000" />
+      <workItem from="1744468243710" duration="4166000" />
+      <workItem from="1744475381718" duration="2272000" />
+      <workItem from="1744545503422" duration="3238000" />
+      <workItem from="1744567327073" duration="436000" />
+      <workItem from="1744567789524" duration="556000" />
+      <workItem from="1744622127762" duration="5810000" />
+      <workItem from="1744629477672" duration="1737000" />
+    </task>
+    <task id="LOCAL-00001" summary="Update .gitignore and project configuration; exclude .venv and esp32 directories">
+      <option name="closed" value="true" />
+      <created>1744377670295</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1744377670295</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Refactor __autogenerate_config method to return success status; enhance user input handling for baud rate and address">
+      <option name="closed" value="true" />
+      <created>1744378011658</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1744378011658</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Refactor ESP32 flasher to ESP32 manager; enhance menu navigation, update handling, and user input validation&#10;&#10;Added UPDATE, HELP features as well">
+      <option name="closed" value="true" />
+      <created>1744383521151</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1744383521151</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Refactor update menu functionality in ESP32 manager; streamline Git checks and enhance user feedback for update status">
+      <option name="closed" value="true" />
+      <created>1744385053442</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1744385053442</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Refactor update menu functionality in ESP32 manager; streamline Git checks and enhance user feedback for update status">
+      <option name="closed" value="true" />
+      <created>1744385190140</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1744385190140</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Enhance ESP32 manager; add COM port availability check and improve communication menu functionality">
+      <option name="closed" value="true" />
+      <created>1744568297571</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1744568297571</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <ignored-roots>
+      <path value="$PROJECT_DIR$/.." />
+    </ignored-roots>
+    <MESSAGE value="Add security policy and to-do list; clean up .gitignore" />
+    <MESSAGE value="Update .gitignore and project configuration; exclude .venv and esp32 directories" />
+    <MESSAGE value="Refactor __autogenerate_config method to return success status; enhance user input handling for baud rate and address" />
+    <MESSAGE value="Refactor ESP32 flasher to ESP32 manager; enhance menu navigation, update handling, and user input validation&#10;&#10;Added UPDATE, HELP features as well" />
+    <MESSAGE value="Refactor update menu functionality in ESP32 manager; streamline Git checks and enhance user feedback for update status" />
+    <MESSAGE value="Merge remote-tracking branch 'origin/nightly' into nightly&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;flasher.py" />
+    <MESSAGE value="Enhance ESP32 manager; add COM port availability check and improve communication menu functionality" />
+    <option name="LAST_COMMIT_MESSAGE" value="Enhance ESP32 manager; add COM port availability check and improve communication menu functionality" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/ESP32_FlashMate$test.coverage" NAME="test Coverage Results" MODIFIED="1744627497192" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ESP32_FlashMate$tes.coverage" NAME="tes Coverage Results" MODIFIED="1744628836474" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/ESP32_FlashMate$flasher.coverage" NAME="flasher Coverage Results" MODIFIED="1744630290001" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+  </component>
+</project>
