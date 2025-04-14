@@ -1,4 +1,5 @@
 import configparser
+import msvcrt
 import os
 import shutil
 import subprocess
@@ -41,43 +42,54 @@ class ESP32:
     # ----------------------------  Menu methods -----------------------------  #
 
     def main_menu(self) -> None:
-        while True:
-            print()
-            separator("ESP32 Ultra Manager - Main Menu")
-            print()
-
-            # Check update status
-            update_status, update_color = self.check.update_status()
-
-            # Check COM port availability
-            ports = list(serial.tools.list_ports.comports())
-            com_status_color = "\033[91m" if not ports else "\033[97m"  # Red if no ports, white otherwise
-
-            print("  [1] Flash an ESP32 Project")
-            print(f"  [2] Communicate {com_status_color}(COM Ports Available: {len(ports)})\033[0m")
-            print(f"  [3] Updates {update_color}({update_status})\033[0m")
-            print("  [4] Help")
-            print("  [5] Exit\n")
-            choice = tprint.input("Select an option: > ").strip()
-
-            if choice == '1':
-                self.__flasher_menu()
-            elif choice == '2':
-                self.__communication_menu()
-            elif choice == '3':
-                self.__update_menu()
-            elif choice == '4':
+        try:
+            while True:
                 print()
-                tprint.info("ESP32 Ultra Manager - Help")
-                print("A tool to flash ESP32 devices from organized folders under ./esp32")
-                print("Each folder must contain .bin files and a config.ini")
-                print("The tool supports auto-generation of config.ini and update via Git.")
-            elif choice == '5' or choice.lower() == 'exit':
-                break
-            else:
-                tprint.warning("Invalid selection. Try again.")
+                separator("ESP32 Ultra Manager - Main Menu")
+                print()
 
-    def __update_menu(self) -> None:
+                # Check update status
+                update_status, update_color = self.check.update_status()
+
+                # Check COM port availability
+                ports = list(serial.tools.list_ports.comports())
+                com_status_color = "\033[91m" if not ports else "\033[97m"  # Red if no ports, white otherwise
+
+                print("  [1] Flash an ESP32 Project")
+                print(f"  [2] Communicate {com_status_color}(COM Ports Available: {len(ports)})\033[0m")
+                print(f"  [3] Updates {update_color}({update_status})\033[0m")
+                print("  [4] Help")
+                print("  [5] Exit\n")
+
+                while msvcrt.kbhit():
+                    msvcrt.getch()
+
+                try:
+                    choice = tprint.input("Select an option: > ").strip()
+                except Exception:
+                    tprint.warning("If you see this after serial communication automatically, its a known bug as the stdin isn't successfully cleared for some reason.")
+                    choice = tprint.input("Select an option: > ").strip()
+
+                if choice == '1':
+                    self._flasher_menu()
+                elif choice == '2':
+                    self._communication_menu()
+                elif choice == '3':
+                    self._update_menu()
+                elif choice == '4':
+                    print()
+                    tprint.info("ESP32 Ultra Manager - Help")
+                    print("A tool to flash ESP32 devices from organized folders under ./esp32")
+                    print("Each folder must contain .bin files and a config.ini")
+                    print("The tool supports auto-generation of config.ini and update via Git.")
+                elif choice == '5' or choice.lower() == 'exit':
+                    break
+                else:
+                    tprint.warning("Invalid selection. Try again.")
+        except Exception as e:
+            handler.exception(msg=e)
+
+    def _update_menu(self) -> None:
         print()
         separator("ESP32 Ultra Manager - Update")
         print()
@@ -140,7 +152,7 @@ class ESP32:
         except Exception as e:
             handler.exception(msg=e)
 
-    def __communication_menu(self) -> None:
+    def _communication_menu(self) -> None:
         try:
             print()
             separator("ESP32 Ultra Manager - Serial Communication")
@@ -188,7 +200,7 @@ class ESP32:
         except Exception as e:
             handler.exception(msg=e)
 
-    def __flasher_menu(self) -> None:
+    def _flasher_menu(self) -> None:
         try:
             print()
             separator("ESP32 Ultra Manager - Flashing")
@@ -308,14 +320,14 @@ class ESP32:
             ports = list(serial.tools.list_ports.comports())
             if not ports:
                 tprint.error("No COM ports found.")
-                self.__flasher_menu()
+                self._flasher_menu()
                 return
 
             selected_port = self.__com_port_menu(ports)
 
             if not selected_port:
                 tprint.warning("No COM port selected, returning to menu.")
-                self.__flasher_menu()
+                self._flasher_menu()
                 return
 
             # Flash the ESP32
@@ -343,7 +355,7 @@ class ESP32:
                 self.__show_issues(folder_path)
 
                 self.check.project(self.menu_items, folder_name, folder_path)
-                self.__flasher_menu()
+                self._flasher_menu()
             else:
                 self.__flash_esp32(folder_name)
         except Exception as e:
@@ -490,14 +502,16 @@ class ESP32:
                 tprint.warning("No COM port selected, returning to menu.")
                 return
 
+            print()
             tprint.info(f"Connecting to {selected_port} at {baud_rate} baud...")
             try:
                 def __test_connection(port_test, baud_test):
                     try:
                         with serial.Serial(port_test, int(baud_test), timeout=1) as ser_test:
                             ser_test.write(b'\x55')  # Send a recognizable byte pattern (e.g., 0x55)
-                            response = ser_test.read(1)  # Read a single byte response
-                            if response == b'\x55':  # Check if the response matches the sent byte
+                            response = ser_test.read(100).decode(errors='ignore')
+                            if "ESP" in response or "rst:" in response:
+                                tprint.debug(f"Received response at baud rate {baud_test}: \n{response}")
                                 return True
                     except serial.SerialException as err:
                         tprint.warning(f"Serial Exception at baud rate {baud_test}: {err}")
@@ -510,18 +524,22 @@ class ESP32:
                     choice = tprint.input(
                         "Do you want to auto-fix and find the correct baud rate? (y/n): > ").strip().lower()
                     if choice == 'y':
-                        for rate in Check.esp32_supported_baudrates:
-                            tprint.info(f"Trying baud rate: {rate}")
+                        tprint.info("Attempting to find a working baud rate...")
+                        for rate in sorted(Check.esp32_supported_baudrates, reverse=True):
+                            tprint.debug(f"Trying baud rate: {rate}")
                             if __test_connection(selected_port, rate):
                                 baud_rate = rate
                                 tprint.success(f"Connection successful at {baud_rate} baud.")
+                                self.config.set('Settings', 'Baud_Rate', str(baud_rate))
+                                with open(os.path.join(self.esp32_folder, project_name, 'config.ini'), 'w') as configfile:
+                                    self.config.write(configfile)
+                                tprint.info(f"Baud rate {baud_rate} saved to config.ini.")
                                 break
                         else:
-                            tprint.error("Unable to find a working baud rate. Returning to menu.")
+                            tprint.warning("Unable to find a working baud rate. Returning to menu.")
                             return
                     else:
-                        tprint.warning("Auto-fix skipped. Returning to menu.")
-                        return
+                        tprint.info("Auto-fix skipped. Connecting...")
 
                 with serial.Serial(selected_port, int(baud_rate), timeout=1) as ser:
                     print()
@@ -532,16 +550,24 @@ class ESP32:
                             if ser.in_waiting > 0:
                                 print(ser.read(ser.in_waiting).decode(errors='ignore'), end='', flush=True)
                         except KeyboardInterrupt:
+                            if ser.is_open:
+                                tprint.debug("Closing serial port and resetting input buffer.")
+                                ser.reset_input_buffer()  # Clear any existing data in the serial buffer
+                                ser.close()
                             break
                         except Exception as e:
                             handler.exception(msg=e)
+                            if ser.is_open:
+                                tprint.debug("Closing serial port and resetting input buffer.")
+                                ser.reset_input_buffer()  # Clear any existing data in the serial buffer
+                                ser.close()
                             break
             except Exception as e:
                 handler.exception(msg=e)
                 return
             finally:
                 print()
-                separator(f"Session {project_name or 'Has'} Ended")
+                separator(f"Session {project_name or 'Temporary'} Ended")
         except Exception as e:
             handler.exception(msg=e)
 
@@ -578,10 +604,6 @@ class Check:
         1152000,
         1500000,
         2000000,  # Often flaky unless high-end bridge + short cable
-        2500000,
-        3000000,
-        3500000,
-        4000000  # ESP32 supports it, but most bridges can't
     ]
 
     def __init__(self, config):

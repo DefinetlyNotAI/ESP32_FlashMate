@@ -7,4 +7,5 @@
 
 | Task                     | Expected Version | Might or Will be done? |
 |--------------------------|------------------|------------------------|
+| Port to Linux            | v1.2.0           | ✅                      |
 | Add esp8266 capabilities | v2.0.0           | ❌                      |
